@@ -108,7 +108,7 @@
         <div class="header">
             <span id="nome"></span>
             <span>enviou</span>
-            <span id="valor" style="margin-left: 8px;"></span>
+            <span id="valor" style="margin-left: 8px; display: none;"></span>
         </div>
         <div id="mensagem" class="mensagem"></div>
     </div>
@@ -158,7 +158,8 @@
 
             // Preenche os dados na tela
             document.getElementById('nome').textContent = data.nome;
-            document.getElementById('valor').textContent = `R$ ${data.valor.toFixed(2)}`;
+            document.getElementById('valor').textContent = data.valor ? `R$ ${data.valor.toFixed(2)}` : '';
+            document.getElementById('valor').style.display = data.valor ? 'block' : 'none';
             document.getElementById('mensagem').textContent = data.mensagem || '';
 
             // Adiciona a classe 'visivel' para ativar a animação de entrada
