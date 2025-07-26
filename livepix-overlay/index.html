@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerta de Doação</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- ESTILO E ANIMAÇÃO (CSS) --- */
+
+        /* 1. O SEGREDO DO FUNDO TRANSPARENTE */
+        /* Removemos qualquer cor de fundo e margens da página. */
+        html,
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            /* Garante que não teremos barras de rolagem */
+        }
+
+        /* 2. O CONTAINER DO ALERTA */
+        /* Este é o único elemento que será visualmente estilizado. */
+        #alerta-container {
+            /* Posição inicial: Escondido fora da tela, à esquerda */
+            position: absolute;
+            top: 50px;
+            left: 0;
+            transform: translateX(-120%);
+            /* Começa totalmente fora da tela */
+
+            /* Estilo do Alerta */
+            min-width: 450px;
+            /* Largura mínima para o alerta */
+            background-color: #18181b;
+            /* Cor de fundo escura, moderna */
+            border-left: 6px solid #a970ff;
+            /* Borda roxa, estilo Twitch */
+            border-radius: 0 10px 10px 0;
+            color: #f4f4f5;
+            /* Cor do texto */
+            padding: 20px 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            /* Sombra para dar profundidade */
+
+            /* Animação */
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            /* Animação suave */
+        }
+
+        /* 3. O ESTADO "VISÍVEL" */
+        /* Quando esta classe é adicionada, a animação acontece. */
+        #alerta-container.visivel {
+            opacity: 1;
+            transform: translateX(0);
+            /* Move para a posição original na tela */
+        }
+
+        /* 4. ESTILOS INTERNOS DO ALERTA */
+        .header {
+            display: flex;
+            align-items: center;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        /* O nome do doador em destaque */
+        .doador-nome {
+            color: #a970ff;
+            /* Roxo para combinar com a borda */
+            margin-right: 8px;
+            /* Espaçamento */
+        }
+
+        /* A mensagem do doador */
+        .mensagem {
+            margin-top: 12px;
+            font-size: 18px;
+            font-style: italic;
+            color: #a1a1aa;
+            /* Cinza claro para a mensagem */
+            border-left: 3px solid #3f3f46;
+            padding-left: 10px;
+        }
+
+        /* Esconde a mensagem se ela não existir */
+        .mensagem:empty {
+            display: none;
+        }
+
+        /* Espaçamento após o nome do doador */
+        .header span:not(.doador-nome) {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="alerta-container">
+        <div class="header">
+            <span id="nome"></span>
+            <span>enviou</span>
+            <span id="valor" style="margin-left: 8px; display: none;"></span>
+        </div>
+        <div id="mensagem" class="mensagem"></div>
+    </div>
+
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
+    <script>
+        // --- LÓGICA DO ALERTA (JAVASCRIPT) ---
+
+        // --- CONFIGURAÇÕES ---
+        // Substitua com suas credenciais PÚBLICAS do Pusher
+        const PUSHER_KEY = '88d42b11a7ec5e251e22';
+        const PUSHER_CLUSTER = 'sa1';
+
+        // Canal e evento que definimos no backend
+        const CHANNEL_NAME = 'canal-alertas-pix';
+        const EVENT_NAME = 'nova-doacao';
+
+        // Duração do alerta na tela em milissegundos (ex: 7 segundos)
+        const DURACAO_ALERTA_MS = 7000;
+
+        // URL para um som de notificação (você pode encontrar vários em sites como myinstants.com)
+        // const SOM_ALERTA_URL = './spongebob.mp3';
+        const SOM_ALERTA_URL = './spongebob.mp3';
+
+        // --- FIM DAS CONFIGURAÇÕES ---
+
+
+        // Fila para gerenciar múltiplos alertas que chegam ao mesmo tempo
+        const filaDeAlertas = [];
+        let alertaEmExibicao = false;
+
+        // Inicializa o som do alerta
+        const som = new Howl({
+            src: [SOM_ALERTA_URL],
+            volume: 0.5
+        });
+
+        // Função principal para mostrar o alerta na tela
+        function exibirAlerta(data) {
+            alertaEmExibicao = true;
+            som.play(); // Toca o som
+
+            const container = document.getElementById('alerta-container');
+
+            // Preenche os dados na tela
+            document.getElementById('nome').textContent = data.nome;
+            document.getElementById('valor').textContent = data.valor ? `R$ ${data.valor.toFixed(2)}` : '';
+            document.getElementById('valor').style.display = data.valor ? 'block' : 'none';
+            document.getElementById('mensagem').textContent = data.mensagem || '';
+
+            // Adiciona a classe 'visivel' para ativar a animação de entrada
+            container.classList.add('visivel');
+
+            // Agenda a remoção do alerta após o tempo definido
+            setTimeout(() => {
+                container.classList.remove('visivel');
+
+                // Espera a animação de saída terminar para processar o próximo alerta
+                setTimeout(() => {
+                    alertaEmExibicao = false;
+                    processarFila();
+                }, 600); // Deve ser igual à duração da transição no CSS
+
+            }, DURACAO_ALERTA_MS);
+        }
+
+        // Função para gerenciar a fila de alertas
+        function processarFila() {
+            // Se não houver um alerta sendo exibido e houver alertas na fila...
+            if (!alertaEmExibicao && filaDeAlertas.length > 0) {
+                // ...pega o próximo alerta da fila e o exibe.
+                const proximoAlerta = filaDeAlertas.shift();
+                exibirAlerta(proximoAlerta);
+            }
+        }
+
+        // 1. CONECTA-SE AO PUSHER
+        const pusher = new Pusher(PUSHER_KEY, {
+            cluster: PUSHER_CLUSTER
+        });
+
+        // 2. INSCREVE-SE NO CANAL
+        const channel = pusher.subscribe(CHANNEL_NAME);
+
+        // 3. "OUVE" O EVENTO DE NOVA DOAÇÃO
+        channel.bind(EVENT_NAME, function (data) {
+            console.log('Nova doação recebida:', data);
+
+            // Adiciona o novo alerta à fila e tenta processá-lo
+            filaDeAlertas.push(data);
+            processarFila();
+        });
+
+        console.log(`Ouvindo por eventos no canal '${CHANNEL_NAME}'...`);
+    </script>
+</body>
+
+</html>
