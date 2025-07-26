@@ -94,6 +94,11 @@
         .mensagem:empty {
             display: none;
         }
+
+        /* Espaçamento após o nome do doador */
+        .header span:not(.doador-nome) {
+            margin-left: 5px;
+        }
     </style>
 </head>
 
@@ -128,7 +133,8 @@
         const DURACAO_ALERTA_MS = 7000;
 
         // URL para um som de notificação (você pode encontrar vários em sites como myinstants.com)
-        const SOM_ALERTA_URL = 'https://www.myinstants.com/media/sounds/notification_sound.mp3';
+        // const SOM_ALERTA_URL = './spongebob.mp3';
+        const SOM_ALERTA_URL = './spongebob.mp3';
 
         // --- FIM DAS CONFIGURAÇÕES ---
 
